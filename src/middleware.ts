@@ -36,6 +36,7 @@ function checkOrigin(request: NextRequest) {
 
   const isPreflight = request.method === 'OPTIONS'
 
+  console.log('isPreflight', isPreflight, process.env.NODE_ENV)
   if (isPreflight)
     return NextResponse.json(
       {},
