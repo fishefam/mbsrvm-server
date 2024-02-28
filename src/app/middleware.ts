@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 
+export const config = {
+  matcher: '/api/:path*',
+}
+
 export async function middleware() {
   const res = NextResponse.next()
 
