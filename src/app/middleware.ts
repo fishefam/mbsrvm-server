@@ -1,22 +1,34 @@
-import { NextResponse } from 'next/server'
+import { matchUrl } from '@bo-carey/urlglob'
+import { NextRequest, NextResponse } from 'next/server'
+
+const ALLOWED_ORIGINS = ['https://**mobius.cloud**']
+
+const CORS_BASE_OPTION = {
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+}
 
 export const config = {
   matcher: '/api/:path*',
 }
 
-export async function middleware() {
-  const res = NextResponse.next()
+export async function middleware(request: NextRequest) {
+  const origin = request.headers.get('origin') ?? 'null'
+  const matches = ALLOWED_ORIGINS.map((url) => matchUrl(origin, url))
+  const isAllowedOrigin = matches.some((value) => value)
 
-  const corsHeaders = [
-    ['Access-Control-Allow-Credentials', 'true'],
-    ['Access-Control-Allow-Origin', '*'],
-    ['Access-Control-Allow-Methods', 'GET,POST'],
-    [
-      'Access-Control-Allow-Headers',
-      'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version',
-    ],
-  ]
-  corsHeaders.forEach(([key, value]) => res.headers.append(key, value))
+  if (request.method === 'OPTIONS') {
+    const preflightHeaders = {
+      ...(isAllowedOrigin && { 'Access-Control-Allow-Origin': origin }),
+      ...CORS_BASE_OPTION,
+    }
+    return NextResponse.json({}, { headers: preflightHeaders })
+  }
 
-  return res
+  const response = NextResponse.next()
+
+  if (isAllowedOrigin) response.headers.set('Access-Control-Allow-Origin', origin)
+  Object.entries(CORS_BASE_OPTION).forEach(([key, value]) => response.headers.set(key, value))
+
+  return response
 }
