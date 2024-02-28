@@ -1,7 +1,7 @@
 import { matchUrl } from '@bo-carey/urlglob'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ALLOWED_ORIGINS = ['https://**mobius.cloud**', 'null']
+const ALLOWED_ORIGINS = ['https://**mobius.cloud**', 'https://blank.page', 'null']
 
 const CORS_BASE_OPTION = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
