@@ -17,7 +17,7 @@ export const config = {
 
 export async function middleware(request: NextRequest) {
   const { isAllowedOrigin, isPreflight, origin } = checkOrigin(request)
-  console.log(process.env.NODE_ENV)
+  console.log(process.env.ENV)
   if (isPreflight && !isAllowedOrigin) return Response.json({}, { status: 401 })
   if (isPreflight && isAllowedOrigin)
     return Response.json({}, { headers: { [makeCorsHeaderName('Origin')]: origin, ...CORS_BASE_OPTION } })
@@ -35,7 +35,7 @@ function checkOrigin(request: NextRequest) {
   const origin = getHeader(request, 'origin')!
   const devMatches = DEV_ORIGINS.map((url) => matchUrl(origin, url))
   const isDevOrigin = devMatches.some((value) => value)
-  const isDevMode = process.env.NODE_ENV === 'development'
+  const isDevMode = process.env.ENV === 'development'
   const isBaseOrigin = matchUrl(origin, BASE_ORIGIN)
   const isAllowedOrigin = isBaseOrigin || (isDevMode && isDevOrigin)
   return { isAllowedOrigin, isPreflight: request.method === 'OPTIONS', origin }
