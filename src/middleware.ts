@@ -1,13 +1,14 @@
 import { matchUrl } from '@bo-carey/urlglob'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { TIncomingHeaders } from './type/generic'
+
 const CORS_PREFIX = 'Access-Control-Allow-'
-const DEV_ORIGINS = ['https://blank.page', 'null']
+const DEV_ORIGINS = ['https://blank.page**', 'null']
 const BASE_ORIGIN = 'https://**mobius.cloud**'
-const IGNORED_PATHS = ['passwordreset', 'login']
 const CORS_BASE_OPTION = {
-  [getCorsKey('Headers')]: 'Content-Type, Authorization',
-  [getCorsKey('Methods')]: 'POST,OPTIONS',
+  [makeCorsHeaderName('Headers')]: '*',
+  [makeCorsHeaderName('Methods')]: 'POST',
 }
 
 export const config = {
@@ -15,42 +16,33 @@ export const config = {
 }
 
 export async function middleware(request: NextRequest) {
-  const isAllowedOrigin = checkOrigin(request)
+  const { isAllowedOrigin, isPreflight, origin } = checkOrigin(request)
+  if (isPreflight && isAllowedOrigin)
+    return Response.json({}, { headers: { [makeCorsHeaderName('Origin')]: origin, ...CORS_BASE_OPTION } })
+  return passOnRequest(origin, isAllowedOrigin)
+}
+
+function passOnRequest(origin: string, isAllowedOrigin: boolean) {
   const response = NextResponse.next()
-  if (isAllowedOrigin) response.headers.set(getCorsKey('Origin'), origin)
+  if (isAllowedOrigin) response.headers.set(makeCorsHeaderName('Origin'), origin)
   Object.entries(CORS_BASE_OPTION).forEach(([key, value]) => response.headers.set(key, value))
   return response
 }
 
 function checkOrigin(request: NextRequest) {
-  const origin = request.headers.get('origin') as string
-  const ignoredOrigins = IGNORED_PATHS.map((path) => `${BASE_ORIGIN}${path}**`)
-  const ignoredMatches = ignoredOrigins.map((value) => matchUrl(origin, value))
-  const devMatches = DEV_ORIGINS.map((value) => matchUrl(origin, value))
-
-  const isDevMode = process.env.NODE_ENV === 'development'
+  const origin = getHeader(request, 'origin')!
+  const devMatches = DEV_ORIGINS.map((url) => matchUrl(origin, url))
   const isDevOrigin = devMatches.some((value) => value)
-  const isIgnoredOrigin = ignoredMatches.some((value) => !value)
+  const isDevMode = process.env.NODE_ENV === 'development'
   const isBaseOrigin = matchUrl(origin, BASE_ORIGIN)
-  const isAllowedOrigin = (isBaseOrigin && !isIgnoredOrigin) || (isDevMode && isDevOrigin)
-
-  const isPreflight = request.method === 'OPTIONS'
-
-  console.log('isPreflight', isPreflight, process.env.NODE_ENV)
-  if (isPreflight)
-    return NextResponse.json(
-      {},
-      {
-        headers: {
-          ...(isAllowedOrigin && { [getCorsKey('Origin')]: origin }),
-          ...CORS_BASE_OPTION,
-        },
-      },
-    )
-
-  return isAllowedOrigin
+  const isAllowedOrigin = isBaseOrigin || (isDevMode && isDevOrigin)
+  return { isAllowedOrigin, isPreflight: request.method === 'OPTIONS', origin }
 }
 
-function getCorsKey(postfix: string) {
+function makeCorsHeaderName(postfix: string) {
   return CORS_PREFIX + postfix
+}
+
+function getHeader(request: NextRequest, name: keyof TIncomingHeaders) {
+  return request.headers.get(name)
 }
