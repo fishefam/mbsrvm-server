@@ -17,6 +17,7 @@ export const config = {
 
 export async function middleware(request: NextRequest) {
   const { isAllowedOrigin, isPreflight, origin } = checkOrigin(request)
+  if (isPreflight && !isAllowedOrigin) return Response.json({}, { status: 401 })
   if (isPreflight && isAllowedOrigin)
     return Response.json({}, { headers: { [makeCorsHeaderName('Origin')]: origin, ...CORS_BASE_OPTION } })
   return passOnRequest(origin, isAllowedOrigin)
